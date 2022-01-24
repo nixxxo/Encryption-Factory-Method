@@ -1,4 +1,5 @@
-{ "info" : "the user data",
+{
+    "info" : "the user data",
     "value1" : 1,
     "value2" : true
 }
