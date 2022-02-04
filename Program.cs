@@ -75,6 +75,37 @@ namespace JPL_Internship
             }
         }
 
+        public (string, string) GenerateAssymetricKeys(){
+            
+            var rsa = new RSACryptoServiceProvider(2048);  
+            string publicKey = rsa.ToXmlString(false);// sending this to a friend
+            string privateKey = rsa.ToXmlString(true); // private key
+
+            return (publicKey, privateKey);   
+
+        }
+
+        public void Execute(Encryption encryption, EncryptionJson json){
+            AssymmetricEncryption assymmetricEncryption = new AssymmetricEncryption();
+
+            var asymKeys = GenerateAssymetricKeys();
+            string publicKey = asymKeys.Item1;
+            Console.WriteLine("Public key: " + publicKey);
+            string privateKey = asymKeys.Item2;
+
+            var data = Encrypt(publicKey, encryption.data);
+            json.EncodedJson("2",publicKey, data, encryption.encrFileName);
+            
+            // * DECRYPTING - Assymmetric
+
+            EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
+            string publicKey_decr = encrInfo.Hash;
+            string e_decr = encrInfo.Data;
+
+            var decrMessage = Decrypt(e_decr, privateKey);
+            Console.WriteLine("Encrypted message: " + decrMessage);
+        }
+
     }
     public class SymmetricEncryption : Encryption{
 
@@ -164,6 +195,27 @@ namespace JPL_Internship
             }  
         }  
 
+        public void Execute(Encryption encryption, EncryptionJson json){
+            var key = ConvertCryptoKeyToStr(GenerateCryptoKey());  
+            Console.WriteLine("Symmetric Key: "+ key);
+
+            var data = Encrypt(key, encryption.data);  
+            var hash = GenerateHash(encryption.data);
+
+            json.EncodedJson("1",hash, data, encryption.encrFileName);
+
+            EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
+
+            string h_decr = encrInfo.Hash;
+            string e_decr = encrInfo.Data;
+
+            string decrypted_e = Decrypt(key, e_decr);
+            string h1 = GenerateHash(decrypted_e);
+
+            Console.WriteLine("Message decrypted successfully: " + string.Equals(h_decr, h1));
+
+        }
+
     }
     class Program
     {
@@ -179,53 +231,18 @@ namespace JPL_Internship
             Encryption encryption = new Encryption();
             EncryptionJson json = new EncryptionJson();
             encryption.data = json.FileToString(filePath);
-            encryption.encrFileName = "encrypted_test.json";
+            encryption.encrFileName = "message.json";
 
             if (Asymetric == "s"){
-                // * ENCRYPTING - Symmetric
+
                 SymmetricEncryption symmetricEncryption = new SymmetricEncryption();
+                symmetricEncryption.Execute(encryption, json);
 
-                var key = symmetricEncryption.ConvertCryptoKeyToStr(symmetricEncryption.GenerateCryptoKey());  
-
-                Console.WriteLine("Symmetric Key: "+ key);
-
-                var e = symmetricEncryption.Encrypt(key, encryption.data);  
-                var h = symmetricEncryption.GenerateHash(encryption.data);
-                
-                json.EncodedJson("1",h, e, encryption.encrFileName);
-
-                // * DECRYPTING - Symmetric
-
-                EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
-                string h_decr = encrInfo.Hash;
-                string e_decr = encrInfo.Data;
-
-                string decrypted_e = symmetricEncryption.Decrypt(key, e_decr);
-                string h1 = symmetricEncryption.GenerateHash(decrypted_e);
-
-                Console.WriteLine("Message decrypted successfully: " + string.Equals(h_decr, h1));
             }
             else{
-                // * ENCRYPTING - Assymmetric
 
                 AssymmetricEncryption assymmetricEncryption = new AssymmetricEncryption();
-
-                var rsa = new RSACryptoServiceProvider(2048);  
- 
-                string publicKey = rsa.ToXmlString(false);// sending this to a friend
-                string privateKey = rsa.ToXmlString(true); // private key   
-
-                var e = assymmetricEncryption.Encrypt(publicKey, encryption.data);
-                json.EncodedJson("2",publicKey,e, encryption.encrFileName);
-                
-                // * DECRYPTING - Assymmetric
-
-                EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
-                string publicKey_decr = encrInfo.Hash;
-                string e_decr = encrInfo.Data;
-
-                var decrMessage = assymmetricEncryption.Decrypt(e_decr, privateKey);
-                Console.WriteLine("Encrypted message: " + decrMessage);
+                assymmetricEncryption.Execute(encryption, json);
 
             }
 
