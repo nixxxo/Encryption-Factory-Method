@@ -9,15 +9,49 @@ using System.Security.Cryptography;
 
 namespace JPL_Internship
 {   
-    public class EncryptionJson
+    public class EncryptionJson : Encryption
     {
         public string Type { get; set; }
         public string Hash { get; set; }
         public string Data { get; set; }
+
+        
+        public string FileToString (string path)
+        {   
+            StreamReader r = new StreamReader(path);
+            string jsonString = r.ReadToEnd();
+
+            return jsonString;
+        }
+
+        public EncryptionJson LoadJson(string path)
+        {
+            string file = FileToString(path);
+            EncryptionJson json = Newtonsoft.Json.JsonConvert.DeserializeObject<EncryptionJson>(file);
+            return json;
+        }
+
+        public void EncodedJson(string type, string hash, string data, string encrFileName)
+        {
+            EncryptionJson json = new EncryptionJson();
+            json.Type = "1";
+            json.Hash = hash;
+            json.Data = data;
+            string jsonReady = JsonSerializer.Serialize(json);
+            File.WriteAllText(@$"{encrFileName}", jsonReady);
+        }
+
     }
-    class Program
-    {
-        static string EncryptA(string data, string publicKey)
+
+    public class Encryption{
+        public string data { get; set; }
+        public string encrFileName { get; set; }
+
+    }
+    public class AssymmetricEncryption : Encryption{
+
+
+        public string Encrypt(string publicKey, string data)
         {
             using (var rsa = new RSACryptoServiceProvider())
             {
@@ -28,7 +62,7 @@ namespace JPL_Internship
             }
         }
 
-        static string DecryptA(string cipherText, string privateKey)
+        public string Decrypt(string cipherText, string privateKey)
         {
 
             using (var rsa = new RSACryptoServiceProvider())
@@ -40,7 +74,44 @@ namespace JPL_Internship
                 return Encoding.UTF8.GetString(encryptData);
             }
         }
-        static string EncryptS(string key, string plainText)  
+
+    }
+    public class SymmetricEncryption : Encryption{
+
+        public Aes GenerateCryptoKey(){
+            Aes aes = Aes.Create();  
+            aes.GenerateIV();  
+            aes.GenerateKey();
+            return aes;
+        }
+        public string ConvertCryptoKeyToStr(Aes aes){
+            string sKey = Convert.ToBase64String(aes.IV);
+            return sKey;
+        }
+        public byte[] ConvertCryptoKeyToByte(string key){
+            byte[] byteKey= Convert.FromBase64String(key);
+            return byteKey;
+        }
+        public string GenerateHash(string data)
+        {
+            StringBuilder stringBdr = new StringBuilder(); // repeated modifications to a string
+
+            byte[] textBytes = Encoding.ASCII.GetBytes(data); // converting string to into a bytes array
+
+            using (SHA1 encr = SHA1.Create())
+            {
+                byte[] generateHash = encr.ComputeHash(textBytes);
+
+                for (int i = 0; i<generateHash.Length; i++)
+                {
+                    stringBdr.Append(generateHash[i].ToString("x2")); // hexadecimal string conversion
+                }
+
+                return stringBdr.ToString();
+            }
+
+        }
+        public string Encrypt(string key, string data)  
         {  
             byte[] iv = new byte[16];  
             byte[] array;  
@@ -58,7 +129,7 @@ namespace JPL_Internship
                     {  
                         using (StreamWriter streamWriter = new StreamWriter((Stream)cryptoStream))  
                         {  
-                            streamWriter.Write(plainText);  
+                            streamWriter.Write(data);  
                         }  
   
                         array = memoryStream.ToArray();  
@@ -69,7 +140,7 @@ namespace JPL_Internship
             return Convert.ToBase64String(array);  
         }  
   
-        static string DecryptS(string key, string cipherText)  
+        public string Decrypt(string key, string cipherText)  
         {  
             byte[] iv = new byte[16];  
             byte[] buffer = Convert.FromBase64String(cipherText);  
@@ -92,120 +163,68 @@ namespace JPL_Internship
                 }  
             }  
         }  
-        static string GenerateHash(string info)
-        {
-            StringBuilder stringBdr = new StringBuilder(); // repeated modifications to a string
 
-            byte[] textBytes = Encoding.ASCII.GetBytes(info); // converting string to into a bytes array
-
-            using (SHA1 encr = SHA1.Create())
-            {
-                byte[] generateHash = encr.ComputeHash(textBytes);
-
-                for (int i = 0; i<generateHash.Length; i++)
-                {
-                    stringBdr.Append(generateHash[i].ToString("x2")); // hexadecimal string conversion
-                }
-
-                return stringBdr.ToString();
-            }
-
-        }
-        static Aes GenerateCryptoKey(){
-            Aes aes = Aes.Create();  
-            aes.GenerateIV();  
-            aes.GenerateKey();
-            return aes;
-        }
-        static string ConvertCryptoKeyToStr(Aes aes){
-            string sKey = Convert.ToBase64String(aes.IV);
-            return sKey;
-        }
-        static byte[] ConvertCryptoKeyToByte(string key){
-            byte[] byteKey= Convert.FromBase64String(key);
-            return byteKey;
-        }
-
-        static string FileToString (string path)
-        {   
-            StreamReader r = new StreamReader(path);
-            string jsonString = r.ReadToEnd();
-
-            return jsonString;
-        }
-
-        static EncryptionJson LoadJson(string path)
-        {
-            string file = FileToString(path);
-            EncryptionJson json = Newtonsoft.Json.JsonConvert.DeserializeObject<EncryptionJson>(file);
-            return json;
-        }
-
-        static void EncodedJson(string type, string hash, string data, string fileName)
-        {
-            EncryptionJson json = new EncryptionJson();
-            json.Type = "1";
-            json.Hash = hash;
-            json.Data = data;
-            string jsonReady = JsonSerializer.Serialize(json);
-            File.WriteAllText(@$"{fileName}", jsonReady);
-        }
-
-
+    }
+    class Program
+    {
+        
         static void Main(string[] args)
         {   
+
             Console.Write("Please choose 'a'(for assimetric) or 's'(for symmetric) encription: ");
             string Asymetric = Console.ReadLine();
 
             string filePath = "test.json";
-            string info = FileToString(filePath);
-            string encrFileName = "msg_send.json";
 
+            Encryption encryption = new Encryption();
+            EncryptionJson json = new EncryptionJson();
+            encryption.data = json.FileToString(filePath);
+            encryption.encrFileName = "encrypted_test.json";
 
             if (Asymetric == "s"){
                 // * ENCRYPTING - Symmetric
+                SymmetricEncryption symmetricEncryption = new SymmetricEncryption();
 
-                var key = ConvertCryptoKeyToStr(GenerateCryptoKey());  
+                var key = symmetricEncryption.ConvertCryptoKeyToStr(symmetricEncryption.GenerateCryptoKey());  
 
                 Console.WriteLine("Symmetric Key: "+ key);
 
-                var e = EncryptS(key, info);  
-                var h = GenerateHash(info);
+                var e = symmetricEncryption.Encrypt(key, encryption.data);  
+                var h = symmetricEncryption.GenerateHash(encryption.data);
                 
-
-                EncodedJson("1",h, e,encrFileName);
+                json.EncodedJson("1",h, e, encryption.encrFileName);
 
                 // * DECRYPTING - Symmetric
 
-                EncryptionJson encrInfo = LoadJson(encrFileName);
+                EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
                 string h_decr = encrInfo.Hash;
                 string e_decr = encrInfo.Data;
 
-                string decrypted_e = DecryptS(key, e_decr);
-                Console.WriteLine(decrypted_e);
-
-                string h1 = GenerateHash(decrypted_e);
+                string decrypted_e = symmetricEncryption.Decrypt(key, e_decr);
+                string h1 = symmetricEncryption.GenerateHash(decrypted_e);
 
                 Console.WriteLine("Message decrypted successfully: " + string.Equals(h_decr, h1));
             }
             else{
                 // * ENCRYPTING - Assymmetric
 
+                AssymmetricEncryption assymmetricEncryption = new AssymmetricEncryption();
+
                 var rsa = new RSACryptoServiceProvider(2048);  
  
                 string publicKey = rsa.ToXmlString(false);// sending this to a friend
                 string privateKey = rsa.ToXmlString(true); // private key   
 
-                var e = EncryptA(info, publicKey);
-                EncodedJson("2",publicKey,e,encrFileName);
+                var e = assymmetricEncryption.Encrypt(publicKey, encryption.data);
+                json.EncodedJson("2",publicKey,e, encryption.encrFileName);
                 
                 // * DECRYPTING - Assymmetric
 
-                EncryptionJson encrInfo = LoadJson(encrFileName);
+                EncryptionJson encrInfo = json.LoadJson(encryption.encrFileName);
                 string publicKey_decr = encrInfo.Hash;
                 string e_decr = encrInfo.Data;
 
-                var decrMessage = DecryptA(e_decr, privateKey);
+                var decrMessage = assymmetricEncryption.Decrypt(e_decr, privateKey);
                 Console.WriteLine("Encrypted message: " + decrMessage);
 
             }
