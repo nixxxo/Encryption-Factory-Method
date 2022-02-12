@@ -44,63 +44,80 @@ namespace JPL_Internship
     }
 
     // * ENCRYPTION
-    abstract class Encryption{
+    abstract class Encr{
         public abstract string Type { get; set;}
         public abstract string Data { get; set; }
         public abstract string EncrFileName { get; set; }
 
     }
 
-    abstract class EncryptionFactory{
-        public abstract Encryption GetEncryption();
+    abstract class EncrFactory{
+        public abstract Encr GetEncr();
     }
 
-    class AssymmetricEncryptionFactory : EncryptionFactory
+    class Encryption : EncrFactory
     {
         private string _type;
         private string _data;  
         private string _encrFileName;  
   
-        public AssymmetricEncryptionFactory(string type, string data, string encrFileName)  
+        public Encryption(string type, string data, string encrFileName)  
         {  
             _type = type;
             _data = data;  
             _encrFileName = encrFileName;  
         }  
   
-        public override Encryption GetEncryption()  
+        public override Encr GetEncr()  
         {  
-            return new AssymmetricEncryption(_type, _data, _encrFileName);  
+            return new EncryptionFactory(_type, _data, _encrFileName);  
         }  
 
     }
 
-    class AssymmetricEncryption : Encryption{
+    class EncryptionFactory : Encr {
 
         private string _type;
         private string _data;
         private string _encrFileName;
 
-        public AssymmetricEncryption(string type, string data, string encrFileName)
+        public EncryptionFactory(string type, string data, string encrFileName)
         {
             _type = type;
             _encrFileName = encrFileName;
-
             EncryptedJson json = new EncryptedJson();
 
-            var asymKeys = GenerateAssymetricKeys();
-            string publicKey = asymKeys.Item1;
-            string privateKey = asymKeys.Item2;
-            Console.WriteLine("Public key: ");
-            Console.WriteLine(publicKey);
-            Console.WriteLine("Private key: ");
-            Console.WriteLine(privateKey);
+            if (type == "1") {
+                var asymKeys = GenerateAssymetricKeys();
+                string publicKey = asymKeys.Item1;
+                string privateKey = asymKeys.Item2;
+                Console.WriteLine("Public key: ");
+                Console.WriteLine(publicKey);
+                Console.WriteLine("Private key: ");
+                Console.WriteLine(privateKey);
 
-            var dataToEncrypt = Encrypt(publicKey, data);
+                var dataToEncrypt = AEncrypt(publicKey, data);
 
-            _data = dataToEncrypt;
+                _data = dataToEncrypt;
 
-            json.EncodedJson(type, publicKey, dataToEncrypt, encrFileName);
+                json.EncodedJson(_type, publicKey, dataToEncrypt, _encrFileName);
+            }
+            else {
+
+                var key = ConvertCryptoKeyToStr(GenerateCryptoKey());  
+
+                Console.WriteLine();
+                Console.WriteLine("Symmetric Key: ");
+                Console.WriteLine(key);
+                Console.WriteLine();
+
+                var dataToEncrypt = SEncrypt(key, data);  
+                var hash = GenerateHash(data);
+                _data = dataToEncrypt;
+
+                json.EncodedJson(_type, hash, dataToEncrypt, _encrFileName);
+
+            }
 
         }
 
@@ -122,7 +139,8 @@ namespace JPL_Internship
             set {_encrFileName = value;} 
         }
 
-        public string Encrypt(string publicKey, string data)
+        // * ASYMMETRIC
+        public string AEncrypt(string publicKey, string data)
         {
             using (var rsa = new RSACryptoServiceProvider())
             {
@@ -143,74 +161,7 @@ namespace JPL_Internship
 
         }
 
-    }
-
-    class SymmetricEncryptionFactory : EncryptionFactory
-    {
-        private string _type;
-        private string _data;  
-        private string _encrFileName;  
-  
-        public SymmetricEncryptionFactory(string type, string data, string encrFileName)  
-        {  
-            _type = type;
-            _data = data;  
-            _encrFileName = encrFileName;  
-        }  
-  
-        public override Encryption GetEncryption()  
-        {  
-            return new SymmetricEncryption(_type, _data, _encrFileName);  
-        }  
-
-    }
-    class SymmetricEncryption : Encryption{
-
-        
-        private string _type;
-        private string _data;
-        private string _encrFileName;
-
-        public SymmetricEncryption(string type, string data, string encrFileName)
-        {
-            _type = type;
-            _encrFileName = encrFileName;
-            EncryptedJson json = new EncryptedJson();
-
-            var key = ConvertCryptoKeyToStr(GenerateCryptoKey());  
-
-            Console.WriteLine();
-            Console.WriteLine("Symmetric Key: ");
-            Console.WriteLine(key);
-            Console.WriteLine();
-
-            var dataToEncrypt = Encrypt(key, data);  
-            var hash = GenerateHash(data);
-            _data = dataToEncrypt;
-
-            json.EncodedJson(type, hash, dataToEncrypt, encrFileName);
-
-
-        }
-
-        public override string Type
-        {
-            get{return _type; }
-            set {_type = value;} 
-        }
-
-        public override string Data 
-        { 
-            get {return _data; }
-            set {_data = value;} 
-        }
-
-        public override string EncrFileName
-        {
-            get {return _encrFileName; }
-            set {_encrFileName = value;} 
-        }
-
+        // * SYMMETRIC
         public Aes GenerateCryptoKey(){
             Aes aes = Aes.Create();  
             aes.GenerateIV();  
@@ -245,7 +196,7 @@ namespace JPL_Internship
             }
 
         }
-        public string Encrypt(string key, string data)  
+        public string SEncrypt(string key, string data)  
         {  
             byte[] iv = new byte[16];  
             byte[] array;  
@@ -273,65 +224,89 @@ namespace JPL_Internship
   
             return Convert.ToBase64String(array);  
         }  
-  
 
     }
 
 
+
     // * DECRYPTION
-    abstract class Decryption{
-        public abstract string Key { get; set; }
+    abstract class Decr{
         public abstract string EncrFileName { get; set; }
 
     }
 
-    abstract class DecryptionFactory{
-        public abstract Decryption GetDecryption();
+    abstract class DecrFactory{
+        public abstract Decr GetDecr();
     }
 
-    class AssymmetricDecryptionFactory : DecryptionFactory
+    class Decryption: DecrFactory
     {
-        private string _key;  
         private string _encrFileName;  
   
-        public AssymmetricDecryptionFactory(string key, string encrFileName)  
+        public Decryption(string encrFileName)  
         {  
-            _key = key;  
             _encrFileName = encrFileName;  
         }  
   
-        public override Decryption GetDecryption()  
+        public override Decr GetDecr()  
         {  
-            return new AssymmetricDecryption(_key, _encrFileName);  
+            return new DecryptionFactory(_encrFileName);  
         } 
 
     }
 
-    class AssymmetricDecryption : Decryption{
+    class DecryptionFactory : Decr{
 
-        private string _key;
         private string _encrFileName;
 
-        public AssymmetricDecryption(string key, string encrFileName)
+        public DecryptionFactory(string encrFileName)
         {
-            // * DECRYPTING - Assymmetric
+            _encrFileName = encrFileName;
 
             EncryptedJson json = new EncryptedJson();
+            EncryptedJson encrInfo = json.LoadJson(_encrFileName);
 
-            EncryptedJson encrInfo = json.LoadJson(encrFileName);
-            string publicKey_decr = encrInfo.jHash;
-            string e_decr = encrInfo.jData;
 
-            var decrMessage = Decrypt(e_decr, key);
-            Console.WriteLine();
-            Console.WriteLine("Decrypted message: " + decrMessage);
 
-        }
+            if (encrInfo.jType == "1")
+            {
+                // * DECRYPTING - Assymmetric
 
-        public override string Key 
-        { 
-            get {return _key; }
-            set {_key = value;} 
+                Console.Write("Private key: ");
+                string _key = Console.ReadLine();
+
+                string publicKey_decr = encrInfo.jHash;
+                string e_decr = encrInfo.jData;
+
+                var decrMessage = ADecrypt(e_decr, _key);
+                Console.WriteLine();
+                Console.WriteLine("Decrypted message: " + decrMessage);
+
+            }
+            else
+            {
+                // * DECRYPTING - Symmetric
+
+                Console.Write("Symmetric key: ");
+                string _key = Console.ReadLine();
+
+
+                string h_decr = encrInfo.jHash;
+                string e_decr = encrInfo.jData;
+                
+
+                string decrypted_e = SDecrypt(_key, e_decr);
+                string h1 = GenerateHash(decrypted_e);
+
+                if (string.Equals(h_decr, h1))
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Decrypted Message: " + decrypted_e);
+                }
+            }
+
+
+
         }
 
         public override string EncrFileName
@@ -340,7 +315,8 @@ namespace JPL_Internship
             set {_encrFileName = value;} 
         }
 
-        public string Decrypt(string cipherText, string privateKey)
+        // * ASYMMETRIC
+        public string ADecrypt(string cipherText, string privateKey)
         {
 
             using (var rsa = new RSACryptoServiceProvider())
@@ -353,65 +329,7 @@ namespace JPL_Internship
             }
         }
 
-    }
-
-    class SymmetricDecryptionFactory : DecryptionFactory
-    {
-        private string _key;  
-        private string _encrFileName;  
-  
-        public SymmetricDecryptionFactory(string key, string encrFileName)  
-        {  
-            _key = key;  
-            _encrFileName = encrFileName;  
-        }  
-  
-        public override Decryption GetDecryption()  
-        {  
-            return new SymmetricDecryption(_key, _encrFileName);  
-        }  
-
-    }
-    class SymmetricDecryption : Decryption{
-
-        private string _key;
-        private string _encrFileName;
-
-        public SymmetricDecryption(string key, string encrFileName)
-        {
-            _encrFileName = encrFileName;
-            EncryptedJson json = new EncryptedJson();
-
-            EncryptedJson encrInfo = json.LoadJson(encrFileName);
-
-            string h_decr = encrInfo.jHash;
-            string e_decr = encrInfo.jData;
-            
-
-            string decrypted_e = Decrypt(key, e_decr);
-            string h1 = GenerateHash(decrypted_e);
-
-            if (string.Equals(h_decr, h1))
-            {
-                Console.WriteLine();
-                Console.WriteLine("Decrypted Message: " + decrypted_e);
-            }
-
-
-        }
-
-        public override string Key 
-        { 
-            get {return _key; }
-            set {_key = value;} 
-        }
-
-        public override string EncrFileName
-        {
-            get {return _encrFileName; }
-            set {_encrFileName = value;} 
-        }
-
+        // * SYMMETRIC
         public string GenerateHash(string data)
         {
             StringBuilder stringBdr = new StringBuilder(); // repeated modifications to a string
@@ -432,7 +350,7 @@ namespace JPL_Internship
 
         }
   
-        public string Decrypt(string key, string cipherText)  
+        public string SDecrypt(string key, string cipherText)  
         {  
             byte[] iv = new byte[16];  
             byte[] buffer = Convert.FromBase64String(cipherText);  
@@ -454,9 +372,10 @@ namespace JPL_Internship
                     }  
                 }  
             }  
-        }  
+        } 
 
     }
+
     class Program
     {
         
@@ -464,17 +383,17 @@ namespace JPL_Internship
         {   
 
 
-            EncryptionFactory eFactory = null; 
-            DecryptionFactory dFactory = null; 
+            EncrFactory eFactory = null; 
+            DecrFactory dFactory = null; 
             EncryptedJson json = new EncryptedJson();
 
 
 
-            Console.Write("Please choose '1'(for encryption) or '2'(for decription): ");
+            Console.Write("Please choose '1'(for encryption) or '2'(for decryption): ");
             string chosenAction = Console.ReadLine();
             if (chosenAction == "1")
             {
-                Console.Write("Please choose '1'(for assimetric) or '2'(for symmetric) encryption: ");
+                Console.Write("Please choose '1'(for assymetric) or '2'(for symmetric) encryption: ");
                 string chosenType = Console.ReadLine();
                 Console.Write("Path of data you want to encrypt: ");
                 string dataFilePath = Console.ReadLine();
@@ -483,22 +402,9 @@ namespace JPL_Internship
                 string encrFile = Console.ReadLine();
                 Console.WriteLine();
 
+                eFactory = new Encryption(chosenType, rawData, encrFile);
 
-                switch (chosenType){
-                case "1":
-                    eFactory = new AssymmetricEncryptionFactory(chosenType, rawData, encrFile);
-                    break;
-                
-                case "2":
-                    eFactory = new SymmetricEncryptionFactory(chosenType, rawData, encrFile);
-                    break;
-
-                default:
-                    break;
-
-                }
-
-                Encryption encr = eFactory.GetEncryption(); 
+                Encr encr = eFactory.GetEncr(); 
             }
             else
             {
@@ -507,29 +413,14 @@ namespace JPL_Internship
 
                 EncryptedJson encrInfo = json.LoadJson(dataFilePath);
 
-                switch (encrInfo.jType.ToString()){
-                case "1":
-                    Console.Write("Private key: ");
-                    string privateKey = Console.ReadLine();
-                    dFactory = new AssymmetricDecryptionFactory(privateKey, dataFilePath);
-                    break;
-                
-                case "2":
-                    Console.Write("Symmetric key: ");
-                    string key = Console.ReadLine();
-                    dFactory = new SymmetricDecryptionFactory(key, dataFilePath);
-                    break;
+                dFactory = new Decryption(dataFilePath);
 
-                default:
-                    break;
-
-                }
-
-                Decryption decr = dFactory.GetDecryption(); 
-
+                Decr decr = dFactory.GetDecr(); 
 
             }
 
+            Console.WriteLine();
+            Console.Write("Press any key to continue.");
             Console.ReadKey();  
 
 
