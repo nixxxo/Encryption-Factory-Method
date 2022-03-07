@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/nickb/Documents/_Work/JPL_Internship/JPL_Internship.csproj": {}
+    "/Users/nickb/Documents/Development/JPL_Internship/JPL_Internship.csproj": {}
   },
   "projects": {
-    "/Users/nickb/Documents/_Work/JPL_Internship/JPL_Internship.csproj": {
+    "/Users/nickb/Documents/Development/JPL_Internship/JPL_Internship.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/nickb/Documents/_Work/JPL_Internship/JPL_Internship.csproj",
+        "projectUniqueName": "/Users/nickb/Documents/Development/JPL_Internship/JPL_Internship.csproj",
         "projectName": "JPL_Internship",
-        "projectPath": "/Users/nickb/Documents/_Work/JPL_Internship/JPL_Internship.csproj",
+        "projectPath": "/Users/nickb/Documents/Development/JPL_Internship/JPL_Internship.csproj",
         "packagesPath": "/Users/nickb/.nuget/packages/",
-        "outputPath": "/Users/nickb/Documents/_Work/JPL_Internship/obj/",
+        "outputPath": "/Users/nickb/Documents/Development/JPL_Internship/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/nickb/.nuget/NuGet/NuGet.Config"
